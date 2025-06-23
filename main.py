@@ -3,6 +3,15 @@ import subprocess
 import datetime
 import argparse
 
+# Try to import tkinter for GUI selection
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+    BULLET_AVAILABLE = False
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
+
 def get_installed_apps():
     """
     Gets a list of installed applications from the /Applications and ~/Applications directories.
@@ -71,6 +80,59 @@ def run_index_mode():
 
     print(f"Report saved to: {filename}")
 
+def select_items_with_tkinter(title, items):
+    """
+    Use Tkinter to let the user select items from a list. Returns the selected items.
+    If Tkinter is not available, returns the original list (select all).
+    """
+    if not TKINTER_AVAILABLE or not items:
+        return items
+    selected = []
+    root = tk.Tk()
+    root.title(title)
+    root.geometry("600x500") # Increased width for columns
+    tk.Label(root, text=title, font=("Arial", 14, "bold")).pack(pady=10)
+
+    # Main frame to hold canvas and scrollbar
+    main_frame = tk.Frame(root)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Canvas for scrollable area
+    canvas = tk.Canvas(main_frame)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Scrollbar
+    scrollbar = tk.Scrollbar(main_frame, orient=tk.VERTICAL, command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Frame inside canvas to hold the checkboxes
+    scrollable_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+    def on_frame_configure(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    scrollable_frame.bind("<Configure>", on_frame_configure)
+
+    vars = []
+    num_columns = 3
+    for i, item in enumerate(items):
+        var = tk.BooleanVar(value=True)
+        chk = tk.Checkbutton(scrollable_frame, text=item, variable=var, anchor="w")
+        row = i // num_columns
+        col = i % num_columns
+        chk.grid(row=row, column=col, sticky="w", padx=5, pady=2)
+        vars.append((item, var))
+
+    def on_ok():
+        nonlocal selected
+        selected = [item for item, var in vars if var.get()]
+        root.destroy()
+    ok_btn = tk.Button(root, text="OK", command=on_ok, width=10)
+    ok_btn.pack(pady=10)
+    root.mainloop()
+    return selected
+
 def run_restore_mode(filepath):
     """
     Restores software from a specified inventory file.
@@ -107,6 +169,16 @@ def run_restore_mode(filepath):
                     formulae.append(line)
                 elif current_section == 'casks':
                     casks.append(line)
+
+    # Interactive selection for formulae and casks using Tkinter
+    if TKINTER_AVAILABLE:
+        if formulae:
+            formulae = select_items_with_tkinter("Select Homebrew Formulae to install", formulae)
+        if casks:
+            casks = select_items_with_tkinter("Select Homebrew Casks to install", casks)
+    else:
+        if formulae or casks:
+            print("\nNOTE: For interactive selection, Tkinter must be available (usually included with Python). Proceeding to install all items...\n")
 
     if formulae:
         print("\n--- Installing Homebrew Formulae ---")
