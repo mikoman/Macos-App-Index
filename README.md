@@ -14,19 +14,6 @@ This Python script helps you create an inventory of installed macOS applications
 - Python 3.x (Tkinter is included by default on macOS and most Python installations)
 - Homebrew (for restore functionality)
 
-## Setup (Recommended: Use a Virtual Environment)
-
-1. **Create and activate a virtual environment:**
-
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-2. **Install dependencies:**
-
-   There are no extra dependencies required. Tkinter is included with Python by default.
-
 ## Usage
 
 ### 1. Index Mode (Default)
