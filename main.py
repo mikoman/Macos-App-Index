@@ -45,6 +45,26 @@ def get_brew_casks():
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
 
+def get_brew_description(package_name, is_cask=False):
+    """
+    Gets the one-line description for a Homebrew formula or cask.
+    """
+    cmd = ["brew", "info"]
+    if is_cask:
+        cmd.append("--cask")
+    cmd.append(package_name)
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
+        lines = result.stdout.strip().split('\n')
+        # The description is usually the second line, after the name/version.
+        # It should not be a URL or a path.
+        if len(lines) > 1 and not lines[1].startswith("http") and not lines[1].startswith("From:"):
+            return lines[1].strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
+        return ""
+    return ""
+
 def run_index_mode():
     """
     Scans the system and creates a file listing installed software.
@@ -66,15 +86,29 @@ def run_index_mode():
 
         f.write("\n### Homebrew Formulae ###\n")
         if brew_formulae:
-            for formula in brew_formulae:
-                f.write(f"{formula}\n")
+            print("Fetching descriptions for Homebrew formulae (this may take a moment)...")
+            total = len(brew_formulae)
+            for i, formula in enumerate(brew_formulae):
+                print(f"  [{i+1}/{total}] Fetching info for {formula}...")
+                description = get_brew_description(formula)
+                if description:
+                    f.write(f"{formula}: {description}\n")
+                else:
+                    f.write(f"{formula}\n")
         else:
             f.write("Homebrew not found or no formulae installed.\n")
 
         f.write("\n### Homebrew Casks ###\n")
         if brew_casks:
-            for cask in brew_casks:
-                f.write(f"{cask}\n")
+            print("Fetching descriptions for Homebrew casks (this may take a moment)...")
+            total = len(brew_casks)
+            for i, cask in enumerate(brew_casks):
+                print(f"  [{i+1}/{total}] Fetching info for {cask}...")
+                description = get_brew_description(cask, is_cask=True)
+                if description:
+                    f.write(f"{cask}: {description}\n")
+                else:
+                    f.write(f"{cask}\n")
         else:
             f.write("Homebrew not found or no casks installed.\n")
 
@@ -182,7 +216,8 @@ def run_restore_mode(filepath):
 
     if formulae:
         print("\n--- Installing Homebrew Formulae ---")
-        for formula in formulae:
+        for line in formulae:
+            formula = line.split(':', 1)[0].strip()
             print(f"Installing brew formula '{formula}'...")
             try:
                 subprocess.run(["brew", "install", formula], check=True)
@@ -194,7 +229,8 @@ def run_restore_mode(filepath):
     
     if casks:
         print("\n--- Installing Homebrew Casks ---")
-        for cask in casks:
+        for line in casks:
+            cask = line.split(':', 1)[0].strip()
             print(f"Installing brew cask '{cask}'...")
             try:
                 subprocess.run(["brew", "install", "--cask", cask], check=True)
