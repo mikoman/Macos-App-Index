@@ -47,12 +47,6 @@ python3 main.py --restore <path_to_inventory_file>
 ## Example
 
 ```bash
-# Create and activate a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# No extra dependencies to install
-
 # Create an inventory file
 python3 main.py
 
